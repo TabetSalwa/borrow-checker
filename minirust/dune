@@ -1,0 +1,19 @@
+(menhir
+ (flags "--explain")
+ (modules parser))
+
+(ocamllex
+ (modules lexer))
+
+(executable
+ (name minirust)
+ (libraries menhirLib fix)
+ (modules_without_implementation ast_types))
+
+(rule
+ (alias runtest)
+ (deps
+  (source_tree ../tests)
+  minirust.exe)
+ (action
+  (run ../tests/do_tests)))
