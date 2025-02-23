@@ -1,7 +1,3 @@
-(* Once you are done writing the code, remove this directive,
-   whose purpose is to disable several warnings. *)
-[@@@warning "-26-27-33"]
-
 (* You should read and understand active_borrows.ml *fully*, before filling the holes
   in this file. The analysis in this file follows the same structure. *)
 
@@ -53,7 +49,7 @@ let go mir : analysis_results =
   let deinitialize pl state = PlaceSet.union state (Hashtbl.find subplaces pl) in
 
   (* Effect of using (copying or moving) a place [pl] on the abstract state [state]. *)
-  let move_or_copy pl state = if typ_is_copy (typ_of_place mir pl) then state else PlaceSet.union state (Hashtbl.find subplaces pl) in
+  let move_or_copy pl state = if typ_is_copy (typ_of_place mir pl) then state else deinitialize pl state in (* If the type of the place does not implement Copy, then the value is moved, which deinitializes the place and its subplaces *)
 
   (* These modules are parameters of the [Fix.DataFlow.ForIntSegment] functor below. *)
   let module Instrs = struct let n = Array.length mir.minstrs end in
@@ -70,8 +66,8 @@ let go mir : analysis_results =
       similar data flow analysis. *)
 
     let foreach_root go =
-      let param_places = Hashtbl.fold (function (Lparam _) as l -> (fun _ acc -> PlaceSet.add (PlLocal l) acc) | _ -> fun _ acc -> acc) mir.mlocals PlaceSet.empty in
-      go mir.mentry (PlaceSet.fold initialize param_places all_places) (* DONE *)
+      let param_places = Hashtbl.fold (function (Lparam _) as l -> (fun _ acc -> PlaceSet.add (PlLocal l) acc) | _ -> fun _ acc -> acc) mir.mlocals PlaceSet.empty in (* Set of places corresponding to the parameters of the function *)
+      go mir.mentry (PlaceSet.fold initialize param_places all_places) (* Only the parameters should be initialized by default *)
 
     let foreach_successor lbl state go =
       match fst mir.minstrs.(lbl) with
@@ -79,7 +75,7 @@ let go mir : analysis_results =
         let state =
           match v with
           | RVplace pl1 -> move_or_copy pl1 state
-          | RVborrow (_, _) -> state
+          | RVborrow (_, _) -> state (* Creating a borrow of a place is the only instance where the place cannot be moved *)
           | RVbinop (_, l1, l2) -> move_or_copy (PlLocal l2) (move_or_copy (PlLocal l1) state)
           | RVunop (_, l1) -> move_or_copy (PlLocal l1) state
           | RVmake (_, l) -> List.fold_left (fun state l ->  move_or_copy (PlLocal l) state) state l
@@ -92,7 +88,7 @@ let go mir : analysis_results =
           go next1 state;
           go next2 state
       | Ireturn -> ()
-      | Icall (_, args, pl, next) -> go next (initialize pl (List.fold_left (fun state l -> deinitialize (PlLocal l) state) state args)) (* DONE *)
+      | Icall (_, args, pl, next) -> go next (initialize pl (List.fold_left (fun state l -> move_or_copy (PlLocal l) state) state args))
   end in
   let module Fix = Fix.DataFlow.ForIntSegment (Instrs) (Prop) (Graph) in
   fun i -> Option.value (Fix.solution i) ~default:PlaceSet.empty
