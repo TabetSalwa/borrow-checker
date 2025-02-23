@@ -95,9 +95,6 @@ val is_subplace_no_deref : place -> place -> bool
 val contains_deref_borrow : place -> bool
 (** Does this place contains the dereference of a borrow? *)
 
-val typ_implements_copy : full_typ -> bool
-(** Does this type implement Copy ? **)
-
 (** Sets of locals and places: *)
 
 module LocSet : Set.S with type elt = local

@@ -70,7 +70,8 @@ let go mir : analysis_results =
       similar data flow analysis. *)
 
     let foreach_root go =
-      go mir.mentry (PlaceSet.fold initialize local_places all_places) (* DONE *)
+      let param_places = Hashtbl.fold (function (Lparam _) as l -> (fun _ acc -> PlaceSet.add (PlLocal l) acc) | _ -> fun _ acc -> acc) mir.mlocals PlaceSet.empty in
+      go mir.mentry (PlaceSet.fold initialize param_places all_places) (* DONE *)
 
     let foreach_successor lbl state go =
       match fst mir.minstrs.(lbl) with
@@ -78,7 +79,7 @@ let go mir : analysis_results =
         let state =
           match v with
           | RVplace pl1 -> move_or_copy pl1 state
-          | RVborrow (_, pl1) -> move_or_copy pl1 state
+          | RVborrow (_, _) -> state
           | RVbinop (_, l1, l2) -> move_or_copy (PlLocal l2) (move_or_copy (PlLocal l1) state)
           | RVunop (_, l1) -> move_or_copy (PlLocal l1) state
           | RVmake (_, l) -> List.fold_left (fun state l ->  move_or_copy (PlLocal l) state) state l
