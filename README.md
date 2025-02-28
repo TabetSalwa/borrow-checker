@@ -1,2 +1,3 @@
 # 2.4 Programmming project : borrow checker
 Implementation of a “borrow checker” for an idealized subset of the Rust programming language
+I started the project by completing the file uninitialized_places.ml. This was the easiest part of the project, although at first I missed some edge cases (especially the fact that borrowing from a place does not move it). Then, I completed borrowck.ml, which was more difficult, due to the fact that in each case, the outlives constraints involve different sets of lifetimes. In the end, I managed to pass all the provided tests. I added comments in my code at the lines which I found non-trivial, and which I did not write correctly at first.
